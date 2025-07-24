@@ -1,6 +1,6 @@
-package com.example.calender.controller;
+package com.example.calendar.controller;
 
-import com.example.calender.service.DutyScheduleService;
+import com.example.calendar.service.DutyScheduleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;

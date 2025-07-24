@@ -1,4 +1,4 @@
-package com.example.calender.service;
+package com.example.calendar.service;
 
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
