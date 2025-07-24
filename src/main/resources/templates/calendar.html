@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Duty Calendar</title>
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/roboto.css" rel="stylesheet">
+    <link href="/css/material-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f5f5f5;
+            font-family: 'Roboto', sans-serif;
+        }
+        .calendar-container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 20px;
+        }
+        .calendar-card {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 3px 1px -2px rgba(0,0,0,.2), 0 2px 2px 0 rgba(0,0,0,.14), 0 1px 5px 0 rgba(0,0,0,.12);
+        }
+        .calendar-header {
+            background-color: #3f51b5;
+            color: white;
+            padding: 24px;
+        }
+        .calendar-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .month-year {
+            font-size: 1.5rem;
+            font-weight: 500;
+            margin: 0;
+        }
+        .nav-btn {
+            background: none;
+            border: none;
+            color: white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: background-color 0.3s;
+        }
+        .nav-btn:hover {
+            background-color: rgba(255, 255, 255, 0.12);
+        }
+        .table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        .weekday-header th {
+            text-align: center;
+            padding: 12px 0;
+            font-weight: 500;
+            color: #757575;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .calendar-day {
+            height: 120px;
+            border: 1px solid #e0e0e0;
+            padding: 8px;
+            vertical-align: top;
+            position: relative;
+            transition: background-color 0.3s;
+        }
+        .calendar-day:not(.other-month):hover {
+            background-color: #f5f5f5;
+        }
+        .calendar-day.other-month {
+            color: #bdbdbd;
+        }
+        .day-number {
+            font-size: 0.875rem;
+            font-weight: 500;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            margin-bottom: 4px;
+        }
+        .today .day-number {
+            background-color: #3f51b5;
+            color: white;
+        }
+        .duty-person {
+            background-color: #e8eaf6;
+            color: #3f51b5;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            display: inline-block;
+        }
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 1rem;
+            color: #757575;
+        }
+        #winnerName {
+            color: #3f51b5;
+            text-shadow: 2px 2px 4px #e8eaf6;
+        }
+    </style>
+</head>
+<body>
+    <div class="calendar-container">
+        <div class="calendar-card">
+            <div class="calendar-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h1 class="h5 mb-0 text-white">Duty Calendar</h1>
+                    <button class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#lotteryModal">Lottery</button>
+                </div>
+                <div class="calendar-nav mt-3">
+                    <button class="nav-btn" id="prevMonth"><i class="material-icons">chevron_left</i></button>
+                    <h2 class="month-year" id="monthYear"></h2>
+                    <button class="nav-btn" id="nextMonth"><i class="material-icons">chevron_right</i></button>
+                </div>
+            </div>
+            
+            <table class="table mb-0">
+                <thead class="weekday-header">
+                    <tr>
+                        <th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th><th>Sun</th>
+                    </tr>
+                </thead>
+                <tbody id="calendarBody">
+                    <!-- Calendar content here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Lottery Modal -->
+    <div class="modal fade" id="lotteryModal" tabindex="-1" aria-labelledby="lotteryModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="lotteryModalLabel">Lottery</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="participants" class="form-label">Participants (CSV format):</label>
+                        <textarea class="form-control" id="participants" rows="5"></textarea>
+                        <div class="form-text">
+                            Enter names, one per line or separated by commas.
+                            <a href="#" data-bs-toggle="modal" data-bs-target="#sampleModal">View Sample</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="startLottery">Start Lottery</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sample Modal -->
+    <div class="modal fade" id="sampleModal" tabindex="-1" aria-labelledby="sampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="sampleModalLabel">CSV Sample</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>You can enter names in two ways:</p>
+                    <strong>One name per line:</strong>
+                    <pre><code>Alice
+Bob
+Charlie</code></pre>
+                    <strong>Separated by commas:</strong>
+                    <pre><code>Alice,Bob,Charlie</code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Winner Announcement Modal -->
+    <div class="modal fade" id="winnerModal" tabindex="-1" aria-labelledby="winnerModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="winnerModalLabel">And the winner is...</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <h2 id="winnerName" class="display-4 my-4"></h2>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/confetti.min.js"></script>
+    <script th:inline="javascript">
+        let currentYear = [[${currentYear}]];
+        let currentMonth = [[${currentMonth}]];
+        
+        const monthNames = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+
+        $(document).ready(function() {
+            loadCalendar();
+            
+            $('#prevMonth, #nextMonth').click(function() {
+                if (this.id === 'prevMonth') {
+                    currentMonth--;
+                    if (currentMonth < 1) {
+                        currentMonth = 12;
+                        currentYear--;
+                    }
+                } else {
+                    currentMonth++;
+                    if (currentMonth > 12) {
+                        currentMonth = 1;
+                        currentYear++;
+                    }
+                }
+                loadCalendar();
+            });
+
+            $('#startLottery').click(function() {
+                const participantsText = $('#participants').val().trim();
+                if (!participantsText) {
+                    alert('Please enter participants.');
+                    return;
+                }
+
+                const participants = participantsText.split(/[\n,]+/).map(name => name.trim()).filter(name => name);
+                if (participants.length === 0) {
+                    alert('No valid participants found.');
+                    return;
+                }
+
+                const winner = participants[Math.floor(Math.random() * participants.length)];
+                
+                $('#winnerName').text(winner);
+
+                const winnerModal = new bootstrap.Modal(document.getElementById('winnerModal'));
+                winnerModal.show();
+            });
+
+            $('#winnerModal').on('shown.bs.modal', function () {
+                confetti({
+                    particleCount: 150,
+                    spread: 90,
+                    origin: { y: 0.6 }
+                });
+            });
+
+            $('#lotteryModal').on('hidden.bs.modal', function () {
+                $('#participants').val('');
+            });
+        });
+
+        function loadCalendar() {
+            $('#monthYear').text(monthNames[currentMonth - 1] + ' ' + currentYear);
+            $('#calendarBody').html('<tr><td colspan="7" class="loading"><div class="spinner-border text-primary"></div><div class="mt-2">Loading...</div></td></tr>');
+
+            $.ajax({
+                url: '/api/schedule',
+                method: 'GET',
+                data: { year: currentYear, month: currentMonth },
+                success: function(data) {
+                    renderCalendar(data);
+                },
+                error: function() {
+                    $('#calendarBody').html('<tr><td colspan="7" class="text-center text-danger p-5">Failed to load calendar.</td></tr>');
+                }
+            });
+        }
+
+        function renderCalendar(data) {
+            const { year, month, dutySchedule, firstDayOfWeek, daysInMonth } = data;
+            const firstDate = new Date(year, month - 1, 1);
+            const startDate = new Date(firstDate);
+            startDate.setDate(startDate.getDate() - (firstDayOfWeek - 1));
+
+            let html = '';
+            let currentDate = new Date(startDate);
+            const today = new Date();
+
+            for (let w = 0; w < 6; w++) {
+                html += '<tr>';
+                for (let d = 0; d < 7; d++) {
+                    const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+                    const isCurrentMonth = currentDate.getMonth() === month - 1;
+                    const isToday = currentDate.toDateString() === today.toDateString();
+
+                    let cellClass = 'calendar-day';
+                    if (!isCurrentMonth) cellClass += ' other-month';
+                    if (isToday) cellClass += ' today';
+
+                    let dutyPersonHtml = '';
+                    if (isCurrentMonth && dutySchedule[dateStr]) {
+                        dutyPersonHtml = `<div class="duty-person">${dutySchedule[dateStr]}</div>`;
+                    }
+
+                    html += `<td class="${cellClass}">
+                                <div class="day-number">${currentDate.getDate()}</div>
+                                ${dutyPersonHtml}
+                             </td>`;
+                    currentDate.setDate(currentDate.getDate() + 1);
+                }
+                html += '</tr>';
+            }
+            $('#calendarBody').html(html);
+        }
+    </script>
+</body>
+</html>
