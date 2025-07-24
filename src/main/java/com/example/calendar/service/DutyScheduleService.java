@@ -102,4 +102,32 @@ public class DutyScheduleService {
     public List<String> getStaffList() {
         return new ArrayList<>(staffList);
     }
+
+    public Map<String, Integer> getDutyStatsYTD(int year) {
+        Map<String, Integer> stats = new HashMap<>();
+        staffList.forEach(staff -> stats.put(staff, 0));
+
+        LocalDate startDate = LocalDate.of(year, 1, 1);
+        LocalDate today = LocalDate.now();
+        // The end date for the stats is today, but not after the end of the given year.
+        LocalDate endDate = today.getYear() == year ? today : LocalDate.of(year, 12, 31);
+
+        if (staffList.isEmpty() || endDate.isBefore(rotationStartDate)) {
+            return stats;
+        }
+
+        LocalDate currentDate = startDate.isBefore(rotationStartDate) ? rotationStartDate : startDate;
+
+        while (!currentDate.isAfter(endDate)) {
+            DayOfWeek dayOfWeek = currentDate.getDayOfWeek();
+            if (dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY) {
+                long dutyDaysSinceStart = countDutyDays(rotationStartDate, currentDate);
+                int staffIndex = (int) (dutyDaysSinceStart % staffList.size());
+                String dutyPerson = staffList.get(staffIndex);
+                stats.put(dutyPerson, stats.get(dutyPerson) + 1);
+            }
+            currentDate = currentDate.plusDays(1);
+        }
+        return stats;
+    }
 }

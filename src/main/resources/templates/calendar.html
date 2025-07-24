@@ -7,6 +7,7 @@
     <link href="/css/bootstrap.min.css" rel="stylesheet">
     <link href="/css/roboto.css" rel="stylesheet">
     <link href="/css/material-icons.css" rel="stylesheet">
+    <link href="/css/weather.css" rel="stylesheet">
     <style>
         body {
             background-color: #f5f5f5;
@@ -24,9 +25,19 @@
             box-shadow: 0 3px 1px -2px rgba(0,0,0,.2), 0 2px 2px 0 rgba(0,0,0,.14), 0 1px 5px 0 rgba(0,0,0,.12);
         }
         .calendar-header {
-            background-color: #3f51b5;
+            position: relative;
             color: white;
+            overflow: hidden; /* Important for containing the animation */
+            display: grid;
+            grid-template-columns: auto 1fr; /* Weather info on left, controls on right */
+            align-items: center;
             padding: 24px;
+            gap: 24px;
+        }
+        #weather-info, .header-controls {
+            position: relative; /* Needed for z-index to work */
+            z-index: 2;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.4);
         }
         .calendar-nav {
             display: flex;
@@ -115,20 +126,122 @@
             color: #3f51b5;
             text-shadow: 2px 2px 4px #e8eaf6;
         }
+
+        #stats-container {
+            background-color: #f8f9fa;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        #stats-toggle {
+            display: flex;
+            align-items: center;
+            padding: 16px 24px;
+            text-decoration: none;
+            color: #495057; /* Darker text for better contrast */
+            font-size: 1.1rem;
+            font-weight: 500;
+            background-color: #e9ecef; /* Light gray background */
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        #stats-toggle:hover {
+            background-color: #dee2e6;
+        }
+
+        #stats-toggle .material-icons {
+            margin-left: auto;
+            transition: transform 0.3s ease;
+        }
+
+        #stats-toggle[aria-expanded="true"] .material-icons {
+            transform: rotate(180deg);
+        }
+
+        #stats-body {
+            background-color: #f8f9fa; /* Match the container background */
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); /* Wider items */
+            gap: 16px;
+        }
+
+        .stat-item {
+            background-color: white;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 8px;
+        }
+
+        .stat-name {
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .stat-count {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #3f51b5;
+        }
+
+        .stat-progress-bar {
+            height: 8px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .stat-progress {
+            height: 100%;
+            width: 0; /* Set by JS */
+            background-color: #3f51b5;
+            border-radius: 4px;
+            transition: width 0.5s ease-out;
+        }
+
+        .day-comment {
+            font-size: 0.75rem;
+            background-color: #fffbe6;
+            border: 1px solid #ffeeba;
+            color: #856404;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-top: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
     </style>
 </head>
 <body>
     <div class="calendar-container">
         <div class="calendar-card">
             <div class="calendar-header">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h1 class="h5 mb-0 text-white">Duty Calendar</h1>
-                    <button class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#lotteryModal">Lottery</button>
+                <div id="weather-animation-container"></div>
+                <div id="weather-info">
+                    <div id="location">Fetching location...</div>
+                    <div id="temperature">--°C</div>
+                    <div id="description">--</div>
                 </div>
-                <div class="calendar-nav mt-3">
-                    <button class="nav-btn" id="prevMonth"><i class="material-icons">chevron_left</i></button>
-                    <h2 class="month-year" id="monthYear"></h2>
-                    <button class="nav-btn" id="nextMonth"><i class="material-icons">chevron_right</i></button>
+                <div class="header-controls">
+                    <div class="d-flex justify-content-end align-items-center">
+                        <h1 class="h5 mb-0 me-auto text-white">Duty Calendar</h1>
+                        <button class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#lotteryModal">Lottery</button>
+                    </div>
+                    <div class="calendar-nav mt-3">
+                        <button class="nav-btn" id="prevMonth"><i class="material-icons">chevron_left</i></button>
+                        <h2 class="month-year" id="monthYear"></h2>
+                        <button class="nav-btn" id="nextMonth"><i class="material-icons">chevron_right</i></button>
+                    </div>
                 </div>
             </div>
             
@@ -142,6 +255,42 @@
                     <!-- Calendar content here -->
                 </tbody>
             </table>
+
+            <div id="stats-container">
+                <a id="stats-toggle" href="#" data-bs-toggle="collapse" data-bs-target="#stats-body">
+                    <span id="stats-year"></span>&nbsp;Year-to-Date Statistics
+                    <i class="material-icons">expand_more</i>
+                </a>
+                <div id="stats-body" class="collapse">
+                    <div id="stats-content" class="p-3">
+                        <!-- Statistics will be rendered here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comment Modal -->
+    <div class="modal fade" id="commentModal" tabindex="-1" aria-labelledby="commentModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="commentModalLabel">Add/Edit Comment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="commentDate">
+                    <div class="mb-3">
+                        <label for="commentText" class="form-label">Comment for <span id="commentModalDate"></span>:</label>
+                        <textarea class="form-control" id="commentText" rows="4"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger me-auto" id="deleteComment">Delete</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="saveComment">Save</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -213,17 +362,23 @@ Charlie</code></pre>
     <script src="/js/jquery.min.js"></script>
     <script src="/js/bootstrap.bundle.min.js"></script>
     <script src="/js/confetti.min.js"></script>
+    <script src="/js/weather.js"></script>
     <script th:inline="javascript">
         let currentYear = [[${currentYear}]];
+
         let currentMonth = [[${currentMonth}]];
-        
+        let comments = {};
+        let commentModal;
+
         const monthNames = [
             'January', 'February', 'March', 'April', 'May', 'June',
             'July', 'August', 'September', 'October', 'November', 'December'
         ];
 
         $(document).ready(function() {
+            commentModal = new bootstrap.Modal(document.getElementById('commentModal'));
             loadCalendar();
+            loadStatistics();
             
             $('#prevMonth, #nextMonth').click(function() {
                 if (this.id === 'prevMonth') {
@@ -240,6 +395,7 @@ Charlie</code></pre>
                     }
                 }
                 loadCalendar();
+                loadStatistics();
             });
 
             $('#startLottery').click(function() {
@@ -274,6 +430,28 @@ Charlie</code></pre>
             $('#lotteryModal').on('hidden.bs.modal', function () {
                 $('#participants').val('');
             });
+
+            // Comment functionality
+            $('#calendarBody').on('dblclick', '.calendar-day', function() {
+                const dateStr = $(this).data('date');
+                if (!dateStr) return; // Ignore clicks on empty cells
+
+                $('#commentDate').val(dateStr);
+                $('#commentModalDate').text(dateStr);
+                $('#commentText').val(comments[dateStr] || '');
+                commentModal.show();
+            });
+
+            $('#saveComment').click(function() {
+                const date = $('#commentDate').val();
+                const text = $('#commentText').val();
+                saveComment(date, text);
+            });
+
+            $('#deleteComment').click(function() {
+                const date = $('#commentDate').val();
+                saveComment(date, ''); // Save empty comment to delete
+            });
         });
 
         function loadCalendar() {
@@ -295,6 +473,7 @@ Charlie</code></pre>
 
         function renderCalendar(data) {
             const { year, month, dutySchedule, firstDayOfWeek, daysInMonth } = data;
+            comments = data.comments || {}; // Store comments
             const firstDate = new Date(year, month - 1, 1);
             const startDate = new Date(firstDate);
             startDate.setDate(startDate.getDate() - (firstDayOfWeek - 1));
@@ -319,15 +498,84 @@ Charlie</code></pre>
                         dutyPersonHtml = `<div class="duty-person">${dutySchedule[dateStr]}</div>`;
                     }
 
-                    html += `<td class="${cellClass}">
+                    let commentHtml = '';
+                    if (comments[dateStr]) {
+                        commentHtml = `<div class="day-comment">${comments[dateStr]}</div>`;
+                    }
+
+                    html += `<td class="${cellClass}" data-date="${dateStr}">
                                 <div class="day-number">${currentDate.getDate()}</div>
                                 ${dutyPersonHtml}
+                                ${commentHtml}
                              </td>`;
                     currentDate.setDate(currentDate.getDate() + 1);
                 }
                 html += '</tr>';
             }
             $('#calendarBody').html(html);
+        }
+
+        function loadStatistics() {
+            $('#stats-year').text(currentYear);
+            $.ajax({
+                url: '/api/statistics',
+                method: 'GET',
+                data: { year: currentYear },
+                success: function(stats) {
+                    renderStatistics(stats);
+                },
+                error: function() {
+                    $('#stats-content').html('<div class="text-danger">Failed to load statistics.</div>');
+                }
+            });
+        }
+
+        function renderStatistics(stats) {
+            const sortedStats = Object.entries(stats).sort((a, b) => b[1] - a[1]);
+            const maxCount = sortedStats.length > 0 ? sortedStats[0][1] : 0;
+
+            let html = '<div class="stats-grid">';
+            if (sortedStats.length === 0) {
+                html += '<p>No duty shifts recorded for this period yet.</p>';
+            } else {
+                for (const [name, count] of sortedStats) {
+                    const progressPercentage = maxCount > 0 ? (count / maxCount) * 100 : 0;
+                    html += `<div class="stat-item">
+                                <div class="stat-header">
+                                    <div class="stat-name">${name}</div>
+                                    <div class="stat-count">${count}</div>
+                                </div>
+                                <div class="stat-progress-bar">
+                                    <div class="stat-progress" style="width: ${progressPercentage}%;"></div>
+                                </div>
+                             </div>`;
+                }
+            }
+            html += '</div>';
+            
+            $('#stats-content').html(html);
+        }
+
+        function saveComment(date, text) {
+            $.ajax({
+                url: '/api/comments',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ date: date, comment: text }),
+                success: function() {
+                    comments[date] = text;
+                    if (!text) delete comments[date]; // Remove if empty
+                    commentModal.hide();
+                    // Re-render the specific cell for an instant update
+                    const cell = $(`td[data-date='${date}']`);
+                    const commentHtml = text ? `<div class="day-comment">${text}</div>` : '';
+                    cell.find('.day-comment').remove();
+                    cell.append(commentHtml);
+                },
+                error: function() {
+                    alert('Failed to save comment. Please try again.');
+                }
+            });
         }
     </script>
 </body>
