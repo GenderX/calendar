@@ -1,0 +1,71 @@
+name: Java CI/CD with Gradle
+
+on:
+  push:
+    branches: [ "main" ]
+  # 为了安全，通常不在 pull_request 时触发部署
+  # pull_request:
+  #   branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  # --- 第一个任务：构建 ---
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build with Gradle
+        run: ./gradlew build --no-daemon
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-app-package # 产物名称要和 deploy 任务中下载的名称一致
+          path: build/libs/*.jar
+          retention-days: 1 # 产物只保留1天
+
+  # --- 第二个任务：部署 ---
+  deploy:
+    # 'needs: build' 确保 deploy 任务在 build 任务成功后才开始
+    needs: build
+    # 'if: github.ref == 'refs/heads/main'' 确保只有在推送到 main 分支时才执行部署
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      # 第一步：下载由 build 任务创建的构建产物
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: my-app-package # 名称必须和 upload-artifact 的名称一致
+
+      # 第二步：部署到服务器
+      - name: Deploy to Server
+        # 使用一个非常流行的 SSH Action
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.PORT }}
+          
+          # source 定义了要复制的文件或目录，`*.jar` 匹配所有 jar 文件
+          source: "*.jar" 
+          # target 定义了文件要复制到服务器的哪个位置
+          target: ${{ secrets.SERVER_DESTINATION }}
+          
+          # script 部分定义了文件复制成功后，在服务器上执行的命令
+          script: |
+            cd ${{ secrets.SERVER_DESTINATION }}
+            ./restart-app.sh
