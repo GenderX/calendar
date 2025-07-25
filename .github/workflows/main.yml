@@ -28,12 +28,16 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew build --no-daemon
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - name: Copy Jar to Server # 定义一个步骤名称
+        uses: appleboy/scp-action@master # 使用 appleboy/scp-action 这个开源 action，将 jar 包拷贝到远程服务器
         with:
-          name: my-app-package # 产物名称要和 deploy 任务中下载的名称一致
-          path: build/libs/*.jar
-          retention-days: 1 # 产物只保留1天
+          host: ${{ secrets.SSH_HOST }} # 远程服务器地址，从 secrets 中读取
+          username: ${{ secrets.SSH_USER }} # 远程服务器用户名，从 secrets 中读取
+          port: ${{ secrets.PORT }} # 远程服务器端口号，从 secrets 中读取
+          key: ${{ secrets.SSH_PRIVATE_KEY }} # SSH 密钥，从 secrets 中读取
+          source: "build/libs/*.jar" # 要拷贝的文件路径
+          rm: true # 是否删除目标文件，如果为 true，表示先删除目标文件，再拷贝新文件
+          target: ${{ secrets.SERVER_DESTINATION }} # 目标文件路径 注意，最终目录为/www/test/target/test_deploy_jar.jar
 
   # --- 第二个任务：部署 ---
   deploy:
@@ -44,12 +48,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 第一步：下载由 build 任务创建的构建产物
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: my-app-package # 名称必须和 upload-artifact 的名称一致
-
       # 第二步：部署到服务器
       - name: Deploy to Server
         # 使用一个非常流行的 SSH Action
@@ -59,12 +57,6 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.PORT }}
-          # source 定义了要复制的文件或目录，`*.jar` 匹配所有 jar 文件
-          source: "build/libs/*.jar"
-          # target 定义了文件要复制到服务器的哪个位置
-          target: ${{ secrets.SERVER_DESTINATION }}
-
-
           # script 部分定义了文件复制成功后，在服务器上执行的命令
           script: |
             cd ${{ secrets.SERVER_DESTINATION }}
