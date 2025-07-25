@@ -35,9 +35,10 @@ jobs:
           username: ${{ secrets.SSH_USER }} # 远程服务器用户名，从 secrets 中读取
           port: ${{ secrets.PORT }} # 远程服务器端口号，从 secrets 中读取
           key: ${{ secrets.SSH_PRIVATE_KEY }} # SSH 密钥，从 secrets 中读取
-          source: "build/libs/*.jar" # 要拷贝的文件路径
+          source: "build/libs/calendar-0.0.1-SNAPSHOT.jar" # 要拷贝的文件路径
           rm: true # 是否删除目标文件，如果为 true，表示先删除目标文件，再拷贝新文件
-          target: ${{ secrets.SERVER_DESTINATION }} # 目标文件路径 注意，最终目录为/www/test/target/test_deploy_jar.jar
+          strip_components: 2
+          target: "/home/deployer/app/bin" # 目标文件路径 注意，最终目录为/www/test/target/test_deploy_jar.jar
 
   # --- 第二个任务：部署 ---
   deploy:
