@@ -49,6 +49,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: my-app-package # 名称必须和 upload-artifact 的名称一致
+          path: ${{ secrets.SERVER_DESTINATION }}
 
       # 第二步：部署到服务器
       - name: Deploy to Server
@@ -59,12 +60,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.PORT }}
-          
-          # source 定义了要复制的文件或目录，`*.jar` 匹配所有 jar 文件
-          source: "*.jar" 
-          # target 定义了文件要复制到服务器的哪个位置
-          target: ${{ secrets.SERVER_DESTINATION }}
-          
+                    
           # script 部分定义了文件复制成功后，在服务器上执行的命令
           script: |
             cd ${{ secrets.SERVER_DESTINATION }}
