@@ -60,7 +60,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.PORT }}
           # source 定义了要复制的文件或目录，`*.jar` 匹配所有 jar 文件
-          source: "calendar-0.0.1-SNAPSHOT.jar"
+          source: "build/libs/*.jar"
           # target 定义了文件要复制到服务器的哪个位置
           target: ${{ secrets.SERVER_DESTINATION }}
 
